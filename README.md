@@ -1,5 +1,11 @@
 # CShaderToy
 
+### changes
+- RGFW instead of GLFW (portable stb-style GLFW)
+- GLAD instead of GLEW (single-header GL loading)
+- test + update `autobuild` for windows
+
+
 ### It's that time of the year again, fellas!
 
 <table>
@@ -19,11 +25,16 @@
 GLSL shaders are widely-used by **MOST** game engines, including some of fan favorites, Godot and GameMaker; in other words - learning shaders can come in really handy!
 
 ## Getting started
-1. Install `glfw3` and `glew` packages using your package manager, or simply build and install them from source.
-2. To build, do either one of these:
+1. To build, do either one of these:
 -   Use `./autobuild` shell script for simple building of the project. Zero bloat and build systems, just pure GCC
--   Use GCC itself, don't forget to provide needed flags for libraries that we're using here!
+-   Use GCC itself, don't forget to provide needed flags for APIs that we're using here!
 3. ???
+
+```sh
+linux : gcc main.c -lX11 -lGL -lXrandr
+windows : gcc main.c -lopengl32 -lshell32 -lgdi32 -lwinmm
+macos : gcc main.c -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo
+```
 
 Since GLSL shaders can compile at run-time, You don't even have to recompile the main C source file every time you make a small change to the shader!
 Just click `R` on your keyboard and all of the shaders will automatically be re-compiled for You! 

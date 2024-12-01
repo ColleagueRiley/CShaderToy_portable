@@ -2,25 +2,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#define GLAD_MALLOC malloc
+#define GLAD_FREE free
+
+#define GLAD_GL_IMPLEMENTATION
+#include "glad.h"
+
+#define RGFW_IMPLEMENTATION
+#include "RGFW.h"
 
 #define LINK_SHADERS(...) link_shaders(__VA_ARGS__, 0)
 #define REMOVE_SHADERS(...) remove_shaders(__VA_ARGS__, 0)
 
 #define ARR_LEN(x) (sizeof(x) / sizeof(x[0]))
 
-/// Initialize GLFW
-#define _INIT_GLFW()                           \
-    if (!glfwInit()) {                         \
-        fprintf(stderr, "GLFW init failed\n"); \
-        return -1;                             \
-    }
-
-/// Initialize GLEW
-#define _INIT_GLEW()                           \
-    if (glewInit() != GLEW_OK) {               \
-        fprintf(stderr, "GLEW init failed\n"); \
+/// Initialize GLAD
+#define _INIT_GLAD(loader)                           \
+    if (gladLoadGL((GLADloadfunc)(loader)) == 0) {               \
+        fprintf(stderr, "GLAD init failed\n"); \
         return -1;                             \
     }
 
@@ -127,11 +126,8 @@ void remove_shaders(GLuint first_shader, ...) {
     va_end(shaders);
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
-    }
-    if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+void key_callback(RGFW_window* window, u32 keycode, char keyName[16], u8 lockState, b8 pressed) {
+    if (keycode == RGFW_r && pressed) {
         char* vertex_shader_source = read_shader("vertex.frag");
         char* fragment_shader_source = read_shader("colors.frag");
 
@@ -149,9 +145,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
-void resize_callback(GLFWwindow* window, int width, int height) {
-    glfwGetFramebufferSize(window, &width, &height);
-    glViewport(0, 0, width, height);
+void resize_callback(RGFW_window* window, RGFW_rect r) {
+    glViewport(0, 0, r.w, r.h);
 }
 
 /// @brief Triangulates a convex polygon
@@ -223,37 +218,27 @@ void CreateTriangleStripIndices(size_t vertexCount, GLuint** indices, size_t* in
 }
 
 int main(void) {
-    _INIT_GLFW();
-
-    const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
- 
-    glfwWindowHint(GLFW_RED_BITS, mode->redBits);
-    glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
-    glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
-    glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
-    glfwWindowHint(GLFW_DECORATED, GL_FALSE);
-    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GL_FALSE);
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	double startTime = ((double)RGFW_getTimeNS() / (double)1e+9);
+	
+	RGFW_setGLVersion(RGFW_GL_CORE, 3, 3);
 
     // Create a windowed mode window and its OpenGL context
-    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "6624", NULL, NULL);
-    if (!window) {
-        fprintf(stderr, "Failed to create GLFW window\n");
-        glfwTerminate();
+    RGFW_window* window = RGFW_createWindow("6624", RGFW_RECT(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), RGFW_CENTER);
+	
+    RGFW_window_swapInterval(window, 1);
+	if (!window) {
+        fprintf(stderr, "Failed to create RGFW window\n");
         return -1;
     }
 
-    glfwSetKeyCallback(window, key_callback);
-    glfwSetFramebufferSizeCallback(window, resize_callback);
+    RGFW_setKeyCallback(key_callback);
+    RGFW_setWindowResizeCallback(resize_callback);
 
     // Make the window's context current
-    glfwMakeContextCurrent(window);
+	RGFW_window_makeCurrent(window);
 
-    // Initialize GLEW
-    _INIT_GLEW();
+    // Initialize GLAD
+    _INIT_GLAD(RGFW_getProcAddress);
 
     char* vertex_shader_source   = read_shader("vertex.frag");
     char* fragment_shader_source = read_shader("colors.frag");
@@ -325,21 +310,17 @@ int main(void) {
 
     float timeValue;
 
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glViewport(0, 0, width, height);
+    glViewport(0, 0, window->r.w, window->r.h);
 
     // The render loop
-    while (!glfwWindowShouldClose(window)) {
-        glfwGetFramebufferSize(window, &width, &height);
-        // Render
+    while (!RGFW_window_shouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Update the 'time' uniform in the fragment shader
-        timeValue = glfwGetTime();
+        timeValue = (((double)RGFW_getTimeNS() / (double)1e+9) - startTime);
         glUniform1f(iTimeUniform, timeValue);
 
-        glUniform2f(iReslUniform, (float)width, (float)height);
+        glUniform2f(iReslUniform, (float)window->r.w, (float)window->r.h);
 
         // Draw the triangle
         glBindVertexArray(VAO);
@@ -347,10 +328,10 @@ int main(void) {
         glBindVertexArray(0);
 
         // Swap front and back buffers
-        glfwSwapBuffers(window);
+        RGFW_window_swapBuffers(window);
 
         // Poll for and process events
-        glfwPollEvents();
+        RGFW_window_checkEvents(window, 0);
     }
 
     glDeleteVertexArrays(1, &VAO);
@@ -359,6 +340,6 @@ int main(void) {
     free(indices);
     glDeleteProgram(global_shader_program);
 
-    glfwTerminate();
+    RGFW_window_close(window);
     return 0;
 }
