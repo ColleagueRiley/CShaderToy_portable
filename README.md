@@ -31,9 +31,9 @@ GLSL shaders are widely-used by **MOST** game engines, including some of fan fav
 3. ???
 
 ```sh
-linux : gcc main.c -lX11 -lGL -lXrandr
-windows : gcc main.c -lopengl32 -lshell32 -lgdi32 -lwinmm
-macos : gcc main.c -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo
+linux : gcc demo-6624.c -lX11 -lGL -lXrandr
+windows : gcc demo-6624.c -lopengl32 -lshell32 -lgdi32 -lwinmm
+macos : gcc demo-6624.c -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo
 ```
 
 Since GLSL shaders can compile at run-time, You don't even have to recompile the main C source file every time you make a small change to the shader!
